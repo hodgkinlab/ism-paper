@@ -1,0 +1,35 @@
+*.DS_Store
+.vscode
+
+# Documents
+/docs/archive
+/docs/*.tex
+/docs/*.bib
+/docs/*.pdf
+/docs/*.bcf
+/docs/*.synctex.gz
+/docs/*.run.xml
+/docs/*.pptx
+/docs/*.docx
+
+# Code output directories
+/code/out/**/*.R
+/code/out/**/*.pdf
+/code/out/**/*.xlsx
+/code/out/**/*.jpg
+/code/out/**/*.log
+/code/out/**/*.rtf
+/code/out/**/*.out
+/code/archive
+/code/out
+!/code/out/
+!/code/out/**/.gitkeep
+
+# Byte-compiled / optimised / DLL files
+/code/__pycache__/
+/code/*.py[cod]
+/code/*$py.class
+
+# C extensions
+/code/**/*.so
+/code/**/*.c
