@@ -27,6 +27,7 @@ rc = {
 }
 sns.set(context='paper', style='white', rc=rc)
 
+BRUTE_STEP = 0.001
 SITER = 200
 BITER = 10000
 
@@ -91,6 +92,32 @@ def residual(pars, x, pAID, pIy1, pIy2b, data1=None, data2=None, weight=None, ex
 		exp_G1 = np.array(exp_G1)/2**x
 		exp_G2 = np.array(exp_G2)/2**x
 
+		## Mean equation (proportion)
+		# exp_AIDpos = [pAID[0]]
+		# exp_G1 = [exp_AIDpos[0]*(p_p1*p_p2 + p_p1*(1. - p_p2))]
+		# exp_G2 = [exp_AIDpos[0]*(1. - p_p1)*p_p2]
+		# S = (1. - p_p1*p_p2 - p_p1*(1. - p_p2) - (1. - p_p1)*p_p2)
+		# for igen in x[1:]:
+		# 	exp_AIDpos.append(1. - np.prod(1. - pAID[:igen+1]))
+		# 	exp_G1.append(
+		# 		exp_G1[0]*(S**igen) - \
+		# 		(p_p1*p_p2 + p_p1*(1. - p_p2)) * np.sum([S**i * \
+		# 			(
+		# 				exp_G2[0] * (1. - (1. - p_p1)*p_p2)**(igen-i-1) + (1. - p_p1)*p_p2*np.sum([
+		# 					(1. - (1. - p_p1)*p_p2)**j * (1. - np.prod(1. - pAID[:igen-i-j])) for j in range(igen-i-1)
+		# 				])
+		# 			)
+		# 		for i in range(igen)]) + \
+		# 		(p_p1*p_p2 + p_p1*(1. - p_p2)) * np.sum([S**i * (1. - np.prod(1. - pAID[:igen+1-i])) for i in range(igen)])
+		# 	)
+		# 	exp_G2.append(
+		# 		exp_G2[0]*(1. - (1. - p_p1)*p_p2)**igen + \
+		# 		(1. - p_p1)*p_p2*np.sum([(1. - (1. - p_p1)*p_p2)**i * (1. - np.prod(1. - pAID[:igen+1-i])) for i in range(igen)])
+		# 	)
+		# exp_AIDpos = np.array(exp_AIDpos)
+		# exp_G1 = np.array(exp_G1)
+		# exp_G2 = np.array(exp_G2)
+
 		all_exp_AIDpos.append(exp_AIDpos * weight[i].mean(axis=1))
 		all_exp_G1.append(exp_G1 * weight[i].mean(axis=1))
 		all_exp_G2.append(exp_G2 * weight[i].mean(axis=1))
@@ -151,21 +178,23 @@ def bootstrap(pars, x, data_pAID, data_pIy1_Iy2b, data_IgG1, pe1_95CI, data_IgG2
 
 		b_pars['pe1'].set(value=rng.uniform(pe1_low, pe1_upp))
 
+		## Find candidates for initial guesses
+		mini_brute = lmf.Minimizer(residual, b_pars, fcn_args=(gens, data_pAID, b_pIy1, b_pIy2b, b_all_igg1, b_all_igg2, weight))
+		res_brute = mini_brute.minimize(method='brute', keep=SITER, workers=1)
+		
+		## Finalise with LM algorithm with candidates from the brute-force method
 		b_candidates = {'result': [], 'residual': []}  # store fitted parameter and its residual
-		for j in tqdm.trange(SITER, leave=False):
+		for j in tqdm.tqdm(res_brute.candidates, leave=False):
 			# Random initial values
-			b_pars['pe2'].set(value=rng.uniform(0, 1))
-			try:  # Some set of initial values is completely non-sensical, resulted in NaN errors
-				mini_lm = lmf.Minimizer(residual, b_pars, fcn_args=(x, data_pAID, b_pIy1, b_pIy2b, b_all_igg1, b_all_igg2, weight))
-				res_lm = mini_lm.minimize(method='leastsq')  # Levenberg-Marquardt algorithm
+			# s_pars['pe2'].set(value=rng.uniform(0, 1))
+			mini_lm = lmf.Minimizer(residual, j.params, fcn_args=(gens, data_pAID, b_pIy1, b_pIy2b, b_all_igg1, b_all_igg2, weight))
+			res_lm = mini_lm.minimize(method='leastsq')  # Levenberg-Marquardt algorithm
 
-				result = res_lm
-				resid = res_lm.chisqr
+			result = res_lm
+			resid = res_lm.chisqr
 
-				b_candidates['result'].append(result)
-				b_candidates['residual'].append(resid)
-			except ValueError as ve:
-				pass
+			b_candidates['result'].append(result)
+			b_candidates['residual'].append(resid)
 		try:  # skip empty set
 			_results = pd.DataFrame(b_candidates)
 			_results.sort_values('residual', ascending=True, inplace=True)  # sort based on residual
@@ -244,27 +273,29 @@ if __name__ == "__main__":
 	all_igg2 = np.array(all_igg2)
 	all_freq = np.array(all_freq)
 
-
 	## Optimisation: shared IgG2b efficiency parameter
+	## Find candidates for initial guesses
 	s_pars = lmf.Parameters()
 	s_pars.add('pe1', value=pe1, min=0, max=1, vary=False)
-	s_pars.add('pe2', value=0.5, min=0, max=1, vary=True)
+	s_pars.add('pe2', value=0.5, min=0, max=1+BRUTE_STEP, vary=True, brute_step=BRUTE_STEP)
+	mini_brute = lmf.Minimizer(residual, s_pars, fcn_args=(gens, pAID, pIy1, pIy2b, all_igg1, all_igg2, all_freq))
+	res_brute = mini_brute.minimize(method='brute', keep=SITER, workers=1)
+
+	## Finalise with LM algorithm with candidates from the brute-force method
+	s_pars['pe2'].set(max=1.)  # because brute method search grid is [min, max)...
 	candidates = {'result': [], 'residual': []}  # store fitted parameter and its residual
-	for s in tqdm.trange(SITER, desc="Init. Fit"):
+	for s in tqdm.tqdm(res_brute.candidates, desc="Init. Fit"):
 		# Random initial values
 		# s_pars['pe1'].set(value=rng.uniform(pe1_low, pe1_upp))
-		s_pars['pe2'].set(value=rng.uniform(0, 1))
-		try:  # Some set of initial values is completely non-sensical, resulted in NaN errors
-			mini_lm = lmf.Minimizer(residual, s_pars, fcn_args=(gens, pAID, pIy1, pIy2b, all_igg1, all_igg2, all_freq))
-			res_lm = mini_lm.minimize(method='leastsq')  # Levenberg-Marquardt algorithm
+		# s_pars['pe2'].set(value=rng.uniform(0, 1))
+		mini_lm = lmf.Minimizer(residual, s.params, fcn_args=(gens, pAID, pIy1, pIy2b, all_igg1, all_igg2, all_freq))
+		res_lm = mini_lm.minimize(method='leastsq')  # Levenberg-Marquardt algorithm
 
-			result = res_lm
-			resid = res_lm.chisqr
+		result = res_lm
+		resid = res_lm.chisqr
 
-			candidates['result'].append(result)
-			candidates['residual'].append(resid)
-		except ValueError as ve:
-			pass
+		candidates['result'].append(result)
+		candidates['residual'].append(resid)
 	fit_results = pd.DataFrame(candidates)
 	fit_results.sort_values('residual', ascending=True, inplace=True)  # sort based on residual
 	best_result = fit_results.iloc[0]['result']
