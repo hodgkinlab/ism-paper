@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import lmfit as lmf
 np.set_printoptions(formatter={'float': lambda x: "{0:0.5f}".format(x)})
-rng = np.random.RandomState(seed=70392595)
+rng = np.random.RandomState(seed=58230045)
 # pd.set_option('display.max_rows', 999999)
 # pd.set_option('display.max_columns', 999999)
 # pd.set_option('display.expand_frame_repr', False)
@@ -26,6 +26,7 @@ rc = {
 }
 sns.set(context='paper', style='white', rc=rc)
 
+BRUTE_STEP = 0.001
 SITER = 100
 BITER = 10000
 
@@ -115,22 +116,22 @@ def bootstrap(pars, x, data_pAID, data_pIy1, data_IgG1):
 			b_prop_IgG1.append(rng.choice(row, size=len(row), replace=True))
 		b_prop_IgG1 = np.array(b_prop_IgG1)
 
+		## Find candidates for initial guesses
+		mini_brute = lmf.Minimizer(residual, b_pars, fcn_args=(gens, b_pAID, b_pIy1, b_prop_IgG1))
+		res_brute = mini_brute.minimize(method='brute', keep=SITER, workers=1)
 
+		## Finalise with LM algorithm with candidates from the brute-force method
 		b_candidates = {'result': [], 'residual': []}  # store fitted parameter and its residual
-		for j in tqdm.trange(SITER, leave=False):
-			# Random initial values
-			b_pars['pe'].set(value=rng.uniform(0, 1))
-			try:  # Some set of initial values is completely non-sensical, resulted in NaN errors
-				mini_lm = lmf.Minimizer(residual, b_pars, fcn_args=(x, b_pAID, b_pIy1, b_prop_IgG1))
-				res_lm = mini_lm.minimize(method='leastsq')  # Levenberg-Marquardt algorithm
+		for j in tqdm.tqdm(res_brute.candidates, leave=False):
+			# b_pars['pe'].set(value=rng.uniform(0, 1)) # Random initial values in [0, 1]
+			mini_lm = lmf.Minimizer(residual, j.params, fcn_args=(x, b_pAID, b_pIy1, b_prop_IgG1))
+			res_lm = mini_lm.minimize(method='leastsq')  # Levenberg-Marquardt algorithm
 
-				result = res_lm
-				resid = res_lm.chisqr
+			result = res_lm
+			resid = res_lm.chisqr
 
-				b_candidates['result'].append(result)
-				b_candidates['residual'].append(resid)
-			except ValueError as ve:
-				pass
+			b_candidates['result'].append(result)
+			b_candidates['residual'].append(resid)
 		try:  # skip empty set
 			_results = pd.DataFrame(b_candidates)
 			_results.sort_values('residual', ascending=True, inplace=True)  # sort based on residual
@@ -169,23 +170,25 @@ if __name__ == "__main__":
 
 
 	## Optimisation (find best-fit efficiency)
+	## Find candidates for initial guesses
 	pars = lmf.Parameters()
-	pars.add('pe', value=0.5, min=0, max=1, vary=True)
+	pars.add('pe', value=0.5, min=0., max=1+BRUTE_STEP, vary=True, brute_step=BRUTE_STEP)
+	mini_brute = lmf.Minimizer(residual, pars, fcn_args=(gens, pAID, pIy1, np_igg1))
+	res_brute = mini_brute.minimize(method='brute', keep=SITER, workers=1)
+
+	# Finalise with LM algorithm with candidates from the brute-force method
+	pars['pe'].set(max=1.)  # because brute method search grid is [min, max)...
 	candidates = {'result': [], 'residual': []}  # store fitted parameter and its residual
-	for s in tqdm.trange(SITER, desc="Init. Fit"):
-		# Random initial values
-		pars['pe'].set(value=rng.uniform(0, 1))
-		try:  # Some set of initial values is completely non-sensical, resulted in NaN errors
-			mini_lm = lmf.Minimizer(residual, pars, fcn_args=(gens, pAID, pIy1, np_igg1))
-			res_lm = mini_lm.minimize(method='leastsq')  # Levenberg-Marquardt algorithm
+	for s in tqdm.tqdm(res_brute.candidates, desc="Init. Fit"):
+		# pars['pe'].set(value=rng.uniform(0, 1))  # Random initial values in [0, 1]
+		mini_lm = lmf.Minimizer(residual, s.params, fcn_args=(gens, pAID, pIy1, np_igg1))
+		res_lm = mini_lm.minimize(method='leastsq')  # Levenberg-Marquardt algorithm
 
-			result = res_lm
-			resid = res_lm.chisqr
+		result = res_lm
+		resid = res_lm.chisqr
 
-			candidates['result'].append(result)
-			candidates['residual'].append(resid)
-		except ValueError as ve:
-			pass
+		candidates['result'].append(result)
+		candidates['residual'].append(resid)
 	fit_results = pd.DataFrame(candidates)
 	fit_results.sort_values('residual', ascending=True, inplace=True)  # sort based on residual
 	best_result = fit_results.iloc[0]['result']
