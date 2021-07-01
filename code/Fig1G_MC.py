@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from sklearn.cluster import KMeans
 np.set_printoptions(formatter={'float': lambda x: "{0:0.5f}".format(x)})
-rng = np.random.RandomState(seed=0)
+rng = np.random.RandomState(seed=55192505)
 # pd.set_option('display.max_rows', 999999)
 # pd.set_option('display.max_columns', 999999)
 # pd.set_option('display.expand_frame_repr', False)
