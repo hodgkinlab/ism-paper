@@ -8,8 +8,8 @@ This repository contains the data and codes used in the paper "A tunable, cell a
 
 List of plots that correspond to the figure numbers in the paper
 - Figure 4: Analysis of differential AID and GLT expression patterning during cell division facilitates a mathematical model that accurately predicts switching frequency.
-- Supplementary Figure 5: RSS analysis of the model $\epsilon_1$ parameter.
 - Repeat of Figure 4 analysis (not shown in the paper)
-- Figure 5: Isotype selection is independent of clonal lineage and conflicting CSR fate decisions are resolved by intracellular competition between GLTs.
-- Supplementary Figure 7: Pre-division predictions of IgG1 and IgG2b switching under varied stimulation conditions using a mathematical model of competitive germline transcription.
 - Supplementary Figure 4: Molecular beacons targeting the Iy1 germline transcript.
+- Figure 5: Isotype selection is independent of clonal lineage and conflicting CSR fate decisions are resolved by intracellular competition between GLTs.
+- Supplementary Figure 5: RSS analysis of the model $\epsilon_1$ parameter.
+- Supplementary Figure 7: Pre-division predictions of IgG1 and IgG2b switching under varied stimulation conditions using a mathematical model of competitive germline transcription.
