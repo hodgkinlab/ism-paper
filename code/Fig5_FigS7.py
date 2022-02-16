@@ -29,7 +29,7 @@ sns.set(context='paper', style='white', rc=rc)
 
 BRUTE_STEP = 0.001
 SITER = 200
-BITER = 10000
+BITER = 100000
 
 def aid_hazard(prop_AID):  # convert overall proportion to hazard probability
 	divs = prop_AID.shape[0]
@@ -121,8 +121,6 @@ def residual(pars, x, pAID, pIy1, pIy2b, data1=None, data2=None, weight=None, ex
 		all_exp_AIDpos.append(exp_AIDpos * weight[i].mean(axis=1))
 		all_exp_G1.append(exp_G1 * weight[i].mean(axis=1))
 		all_exp_G2.append(exp_G2 * weight[i].mean(axis=1))
-
-		## TODO: Mean equation (proportion i.e. multiply 2^-g)
 
 		for j in range(nreps):
 			resid1[i,:,j] = (data1[i,:,j] - exp_G1) * np.sqrt(weight[i,:,j])
@@ -216,7 +214,7 @@ if __name__ == "__main__":
 	conc = [200, 100, 50, 20, 10]  # IL-4 concentration
 
 	## Import AID+ data
-	aid_df = pd.read_excel("./data/Fig3/fig3_AID_division.xlsx", index_col=0)
+	aid_df = pd.read_excel("./data/Fig5/AID_division.xlsx", index_col=0)
 	aid_df.columns = conc
 	## Empirical mean for expressing AID+
 	data = aid_df.mean(axis=1).to_numpy()/100  # taking mean across IL-4
@@ -224,7 +222,7 @@ if __name__ == "__main__":
 	pAID[pAID<0] = 0
 
 	## Import Iy1+, Iy2b+ data
-	iy1_iy2_df = pd.read_excel("./data/Fig3/Fig3D_singlecellqPCR_Iy1Iy2b_IL4_DIV.xlsx", usecols="A:E", index_col=0)
+	iy1_iy2_df = pd.read_excel("./data/Fig5/singlecellqPCR_Iy1Iy2b_IL4_DIV.xlsx", usecols="A:E", index_col=0)
 	iy1_iy2_df.reset_index(drop=True, inplace=True)
 	## Empirical mean for expressing Iy1+, Iy2b+
 	pIy1 = []
@@ -238,17 +236,17 @@ if __name__ == "__main__":
 	pIy2b = np.mean(prop_pIy2b)
 
 	## Import IgG1, IgG2b data
-	igg1_df = pd.read_excel("./data/Fig3/fig3_IgG1_division.xlsx", index_col=0)
+	igg1_df = pd.read_excel("./data/Fig5/IgG1_division.xlsx", index_col=0)
 	igg1_df.columns = [c for c in conc for _ in (1,2,3)]
-	igg2_df = pd.read_excel("./data/Fig3/fig3_IgG2b_division.xlsx", index_col=0)
+	igg2_df = pd.read_excel("./data/Fig5/IgG2b_division.xlsx", index_col=0)
 	igg2_df.columns = [c for c in conc for _ in (1,2,3)]
 
 	## Import cell frequency data
-	freq_df = pd.read_excel('./data/Fig3/divisionfreq_Fig3.xlsx', index_col=0)
+	freq_df = pd.read_excel('./data/Fig5/divisionfreq.xlsx', index_col=0)
 	freq_df.columns = [c for c in conc for _ in (1,2,3)]
 
 	## Import fitted pe1 (IgG1) efficiency
-	pe1_df = pd.read_excel("./out/Fig2-IgG1/Fig2_results.xlsx", sheet_name='pars_efficiency', index_col=0)
+	pe1_df = pd.read_excel("./out/Fig4/results.xlsx", sheet_name='pars_efficiency', index_col=0)
 	pe1, pe1_low, pe1_upp = pe1_df['best-fit'].values[0], pe1_df['Lower95%'].values[0], pe1_df['Upper95%'].values[0]
 
 	
@@ -320,7 +318,7 @@ if __name__ == "__main__":
 	fig2_1, ax2_1 = plt.subplots(tight_layout=True)
 	fig2_2, ax2_2 = plt.subplots(tight_layout=True)
 	fig2_3, ax2_3 = plt.subplots(nrows=5, ncols=2, sharex=True, sharey=True, figsize=(8,8))
-	with pd.ExcelWriter("./out/Fig3/Fig3_results.xlsx", engine='xlsxwriter', options=options, mode='w') as writer:
+	with pd.ExcelWriter("./out/Fig5_FigS7/results.xlsx", engine='xlsxwriter', options=options, mode='w') as writer:
 		for icc, c in enumerate(conc):			
 			igg1_avg.append(np.mean(curves[1][icc]))
 			igg1_low95, igg1_upp95 = np.percentile(b_igg1[:,icc,:], q=[2.5, 97.5], axis=0)
@@ -491,12 +489,12 @@ if __name__ == "__main__":
 		ax3.legend(fontsize=16)
 
 
-		fig1_1.savefig('./out/Fig3/Fig3E-F_Overall_v1.pdf', dpi=300)
-		fig1_2.savefig('./out/Fig3/Fig3E-F_Overall_v2.pdf', dpi=300)
-		fig2_1.savefig('./out/Fig3/Fig3E-F_IgG1_DIV.pdf', dpi=300)
-		fig2_2.savefig('./out/Fig3/Fig3E-F_IgG2b_DIV.pdf', dpi=300)
-		fig2_3.savefig('./out/Fig3/Fig3E-F_IgG1_IgG2b_DIV.pdf', dpi=300)
-		fig3.savefig('./out/Fig3/Fig3E-F_Efficiency.pdf', dpi=300)
+		fig1_1.savefig('./out/Fig5_FigS7/Overall_v1.pdf', dpi=300)
+		fig1_2.savefig('./out/Fig5_FigS7/Overall_v2.pdf', dpi=300)
+		fig2_1.savefig('./out/Fig5_FigS7/IgG1_DIV.pdf', dpi=300)
+		fig2_2.savefig('./out/Fig5_FigS7/IgG2b_DIV.pdf', dpi=300)
+		fig2_3.savefig('./out/Fig5_FigS7/IgG1_IgG2b_DIV.pdf', dpi=300)
+		fig3.savefig('./out/Fig5_FigS7/Efficiency.pdf', dpi=300)
 
 		igg1_den_il4 = pd.DataFrame(
 			data = {'IL-4 Concentration (U/mL)': conc,
@@ -541,6 +539,6 @@ if __name__ == "__main__":
 		igg2_den_il4.to_excel(writer, sheet_name="Avg IgG2b density", index=False)
 		igg2_il4.to_excel(writer, sheet_name="Avg IgG2b prop", index=False)
 		pe_xlsx.to_excel(writer, sheet_name="pars", index=False)
-	plt.show()
+	# plt.show()
 	
 

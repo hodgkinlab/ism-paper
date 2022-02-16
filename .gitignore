@@ -2,6 +2,7 @@
 .vscode
 
 # Documents
+/docs
 /docs/archive
 /docs/*.tex
 /docs/*.bib

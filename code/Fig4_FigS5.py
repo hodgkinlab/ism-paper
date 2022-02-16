@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import lmfit as lmf
 np.set_printoptions(formatter={'float': lambda x: "{0:0.5f}".format(x)})
-rng = np.random.RandomState(seed=58230045)
+rng = np.random.RandomState(seed=70392595)
 # pd.set_option('display.max_rows', 999999)
 # pd.set_option('display.max_columns', 999999)
 # pd.set_option('display.expand_frame_repr', False)
@@ -28,7 +28,7 @@ sns.set(context='paper', style='white', rc=rc)
 
 BRUTE_STEP = 0.001
 SITER = 100
-BITER = 10000
+BITER = 100000
 
 def aid_hazard(data):  # convert overall proportion to hazard probability
 	divs, nreps = data.shape
@@ -72,9 +72,11 @@ def residual(pars, x, pAID, pIy1, data=None):
 
 	## Mean equation (proportion)
 	# exp_AIDpos = [pAID[0]]
+	# exp_Iy1pos = [pIy1]
 	# exp_G1 = [pAID[0]*pe*pIy1]
 	# for igen in x[1:]:
 	# 	exp_AIDpos.append(1. - np.prod(1. - pAID[:igen+1]))
+	# 	exp_Iy1pos.append(pIy1)
 	# 	exp_G1.append(
 	# 		exp_G1[0]*(1. - pe*pIy1)**igen + \
 	# 		pe*pIy1*np.sum( [(1. - pe*pIy1)**i * (1. - np.prod(1. - pAID[:igen+1-i])) for i in range(igen)] )
@@ -150,20 +152,24 @@ def bootstrap(pars, x, data_pAID, data_pIy1, data_IgG1):
 	
 
 if __name__ == "__main__":
-	xlsx = pd.ExcelFile('./data/Fig2-IgG1/repeat/IgG_IgE_data.xlsx')
-	df_aid = pd.read_excel(xlsx, sheet_name='AID Div', index_col=0)
-	np_aid = df_aid.to_numpy()/100
-	pAID = aid_hazard(np_aid)
-	pAID[pAID<0] = 0
-	pAID = np.nanmean(pAID, axis=1)
+	## Import AID+ measurements
+	aid_df = pd.read_excel("./data/Fig4/Fig4I_AIDproportion_division.xlsx", usecols="A:D", index_col=0)
+	## Use empirical mean as AID+ probability (per division)
+	data = aid_df.to_numpy()
+	c_data = aid_hazard(data)
+	c_data[c_data<0] = 0
+	pAID = np.nanmean(c_data, axis=1)  
 
-	df_iy1_ie = pd.read_excel(xlsx, sheet_name='Iy1 Ie sc-qPCR', index_col=0)
-	df_iy1_ie.reset_index(drop=True, inplace=True)
-	_, _, iy1_prop = calc_positive_prop(df_iy1_ie, group='Division', key='Iy1')
-	pIy1 = np.mean(iy1_prop)
+	## Import Iy1+ measurements
+	iy1_df = pd.read_csv("./data/Fig4/Fig4H_Iy1GLT_division_singlecellqPCR.csv", usecols=range(0,3), index_col=0)
+	iy1_df.reset_index(drop=True, inplace=True)
+	## Use empirical mean as Iy1+ probability (constant probability across division)
+	## This is equivalent to using a linear regression
+	_, _, prop_pIy1 = calc_positive_prop(iy1_df, group='Division', key='Iy1')  # calculate proportion Iy1+ per division
+	pIy1 = np.mean(prop_pIy1)
 
-	igg1_df = pd.read_excel(xlsx, sheet_name='IgG1 Div', index_col=0)
-	np_igg1 = igg1_df.to_numpy()/100
+	igg1_df = pd.read_excel("./data/Fig4/Fig4J_IgG1switching_division.xlsx", usecols="A:D", index_col=0)
+	igg1_data = igg1_df.to_numpy()
 
 	
 	gens = np.arange(0, 7, step=1)
@@ -173,15 +179,15 @@ if __name__ == "__main__":
 	## Find candidates for initial guesses
 	pars = lmf.Parameters()
 	pars.add('pe', value=0.5, min=0., max=1+BRUTE_STEP, vary=True, brute_step=BRUTE_STEP)
-	mini_brute = lmf.Minimizer(residual, pars, fcn_args=(gens, pAID, pIy1, np_igg1))
+	mini_brute = lmf.Minimizer(residual, pars, fcn_args=(gens, pAID, pIy1, igg1_data))
 	res_brute = mini_brute.minimize(method='brute', keep=SITER, workers=1)
 
-	# Finalise with LM algorithm with candidates from the brute-force method
+	## Finalise with LM algorithm with candidates from the brute-force method
 	pars['pe'].set(max=1.)  # because brute method search grid is [min, max)...
 	candidates = {'result': [], 'residual': []}  # store fitted parameter and its residual
 	for s in tqdm.tqdm(res_brute.candidates, desc="Init. Fit"):
 		# pars['pe'].set(value=rng.uniform(0, 1))  # Random initial values in [0, 1]
-		mini_lm = lmf.Minimizer(residual, s.params, fcn_args=(gens, pAID, pIy1, np_igg1))
+		mini_lm = lmf.Minimizer(residual, s.params, fcn_args=(gens, pAID, pIy1, igg1_data))
 		res_lm = mini_lm.minimize(method='leastsq')  # Levenberg-Marquardt algorithm
 
 		result = res_lm
@@ -197,7 +203,7 @@ if __name__ == "__main__":
 	best_aid, best_iy1, best_igg1 = residual(best_result.params, gens, pAID, pIy1, data=None)
 
 	## Bootstrap
-	boots_aid, boots_iy1, boots_igg1, boots_pe = bootstrap(pars, gens, np_aid, df_iy1_ie, np_igg1)
+	boots_aid, boots_iy1, boots_igg1, boots_pe = bootstrap(pars, gens, data, iy1_df, igg1_data)
 	aid_low95, aid_upp95 = np.percentile(boots_aid, q=[2.5, 97.5], axis=0)
 	iy1_low95, iy1_upp95 = np.percentile(boots_iy1, q=[2.5, 97.5], axis=0)
 	igg1_low95, igg1_upp95 = np.percentile(boots_igg1, q=[2.5, 97.5], axis=0)
@@ -211,14 +217,14 @@ if __name__ == "__main__":
 	copy_pars = pars.copy()
 	for _pe in pes:
 		copy_pars['pe'].set(value=_pe)
-		_rss = np.sum(residual(copy_pars, gens, pAID, pIy1, data=np_igg1)**2)
+		_rss = np.sum(residual(copy_pars, gens, pAID, pIy1, data=igg1_data)**2)
 		rss.append(_rss)
 
 	b_rss = []
 	for b in tqdm.trange(BITER, desc='RSS', leave=True):
 		## Input 1: Resample AID data
 		b_prop_AID = []
-		for row in np_aid:
+		for row in data:
 			b_prop_AID.append(rng.choice(row, size=len(row), replace=True))
 		b_prop_AID = np.array(b_prop_AID)
 		b_AID = aid_hazard(b_prop_AID)
@@ -226,14 +232,14 @@ if __name__ == "__main__":
 		b_pAID = np.nanmean(b_AID, axis=1)
 
 		## Input 2: Resample Iy1 data
-		c_df = df_iy1_ie.copy()
+		c_df = iy1_df.copy()
 		b_df = c_df.groupby('Division').apply(lambda x: x.sample(frac=1, replace=True, random_state=rng)).reset_index(drop=True)
 		_, _, b_prop_Iy1 = calc_positive_prop(b_df, group='Division', key='Iy1')
 		b_pIy1 = np.mean(b_prop_Iy1)
 
 		## Output: Resample IgG1 data
 		b_prop_IgG1 = []
-		for row in np_igg1:
+		for row in igg1_data:
 			b_prop_IgG1.append(rng.choice(row, size=len(row), replace=True))
 		b_prop_IgG1 = np.array(b_prop_IgG1)
 
@@ -244,43 +250,41 @@ if __name__ == "__main__":
 			tmp_rss.append(_rss)
 		b_rss.append(tmp_rss)
 	rss_low95, rss_upp95 = np.nanpercentile(b_rss, q=[2.5, 97.5], axis=0)
-	data_rss = np.sum(residual(best_result.params, gens, pAID, pIy1, data=np_igg1)**2)
+	data_rss = np.sum(residual(best_result.params, gens, pAID, pIy1, data=igg1_data)**2)
 	pe_95range = np.linspace(pe_low95, pe_upp95, num=delta_pe)
 	rss_95range = []
 	for _pe95 in pe_95range:
 		copy_pars['pe'].set(value=_pe95)
-		rss_95range.append(np.sum(residual(copy_pars, gens, pAID, pIy1, data=np_igg1)**2))
+		rss_95range.append(np.sum(residual(copy_pars, gens, pAID, pIy1, data=igg1_data)**2))
 
 
-	## Plot RSS
-	cp = sns.color_palette()
+	# Plot RSS
 	fig1, ax1 = plt.subplots(tight_layout=True)
-	ax1.plot(pes*100, rss, '-', color=cp[5], lw=2)
-	ax1.fill_between(pes*100, rss_low95, rss_upp95, color=cp[5], ec=None, alpha=0.3)
+	ax1.plot(pes*100, rss, 'k-', lw=2)
+	ax1.fill_between(pes*100, rss_low95, rss_upp95, color='k', ec=None, alpha=0.3)
 	ax1.errorbar([fit_pe*100], [data_rss],
-				xerr=[[(fit_pe - pe_low95)*100], [(pe_upp95 - fit_pe)*100]],
-				fmt='o', color='red', mec='k', zorder=10, 
-				label=f"${fit_pe*100:.3f}\pm_{{{(fit_pe - pe_low95)*100:.3f}}}^{{{(pe_upp95 - fit_pe)*100:.3f}}}$%")
+				 xerr=[[(fit_pe - pe_low95)*100], [(pe_upp95 - fit_pe)*100]],
+				 fmt='o', color='red', mec='k', zorder=10, 
+				 label=f"${fit_pe*100:.3f}\pm_{{{(fit_pe - pe_low95)*100:.3f}}}^{{{(pe_upp95 - fit_pe)*100:.3f}}}$%")
 	ax1.plot(pe_95range*100, rss_95range, '-', color='red', zorder=10)
 	ax1.legend(fontsize=16, handletextpad=0, columnspacing=0)
 	ax1.set_ylabel("RSS", fontsize=16)
 	ax1.set_xlabel("%Efficiency", fontsize=16)
-	ax1.set(xlim=(0, 100), ylim=(0, None))
+	ax1.set(xlim=(0, 100), ylim=(0, None))		
 
 
 	## Plot AID+
-	cp = sns.color_palette("Paired")
 	fig2, ax2 = plt.subplots(tight_layout=True)
-	ax2.errorbar(gens, np_aid.mean(axis=1), yerr=sps.sem(np_aid, axis=1), fmt='o-', color='k', mfc='none', label="Experiment")
-	ax2.plot(gens, best_aid, 'o--', color=cp[3], label="Model")
-	ax2.fill_between(gens, aid_low95, aid_upp95, color=cp[3], ec=None, alpha=0.3)
+	ax2.errorbar(gens, data.mean(axis=1), yerr=sps.sem(data, axis=1), fmt='o-', color='k', mfc='none', label="Experiment")
+	ax2.plot(gens, best_aid, 'bo--', label="Model")
+	ax2.fill_between(gens, aid_low95, aid_upp95, color='b', ec=None, alpha=0.3)
 	ax2.set(ylabel="Proportion AID+", xlabel="Division", ylim=(0, None))
 	ax2.legend(loc='upper left', fontsize=16)
 	ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
 
 
 	figg, axx = plt.subplots(tight_layout=True)
-	axx.plot(np.unique(df_iy1_ie['Division']), iy1_prop, 'ko-', mfc='none', label="Experiment")
+	axx.plot(np.unique(iy1_df['Division']), prop_pIy1, 'ko-', mfc='none', label="Experiment")
 	axx.plot(gens, best_iy1, 'ro--', label="Model")
 	axx.fill_between(gens, iy1_low95, iy1_upp95, color='r', ec=None, alpha=0.3)
 	axx.set(ylabel="Proportion Iy1+", xlabel="Division", ylim=(0, 1))
@@ -290,24 +294,22 @@ if __name__ == "__main__":
 
 	## Plot IgG1+
 	fig3, ax3 = plt.subplots(tight_layout=True)
-	ax3.errorbar(igg1_df.index, np_igg1.mean(axis=1), yerr=sps.sem(np_igg1, axis=1), fmt='o-', color='k', mfc='none', label="Experiment")
-	ax3.plot(gens, best_igg1, 'o--', c=cp[5], label="Model")
-	ax3.fill_between(gens, igg1_low95, igg1_upp95, color=cp[5], ec=None, alpha=0.3)
-	ax3.legend(loc='upper left', fontsize=16)
-	ax3.xaxis.set_major_locator(MaxNLocator(integer=True))
-	ax3.set(ylabel="Proportion IgG1+", xlabel="Division")
+	ax3.errorbar(igg1_df.index, igg1_df.mean(axis=1), yerr=igg1_df.sem(axis=1), 
+				 fmt='o-', color='k', mfc='none', label="Experiment")
+	ax3.plot(gens, best_igg1, 'o--', c='purple', label="Model")
+	ax3.fill_between(gens, igg1_low95, igg1_upp95, color='purple', ec=None, alpha=0.3)
+	ax3.set(ylabel="Proportion IgG1+", xlabel="Division", ylim=(0, None))
 	ax3.legend(loc='upper left', fontsize=16)
 	ax3.xaxis.set_major_locator(MaxNLocator(integer=True))
 
 	## Save plots
-	fig1.savefig('./out/Fig2-IgG1/repeat/Fig2K-M_repeat_RSS.pdf', dpi=300)
-	fig2.savefig('./out/Fig2-IgG1/repeat/Fig2K-M_repeat_AID.pdf', dpi=300)
-	figg.savefig('./out/Fig2-IgG1/repeat/Fig2K-M_Iy1.pdf', dpi=300)
-	fig3.savefig('./out/Fig2-IgG1/repeat/Fig2K-M_repeat_IgG1.pdf', dpi=300)
-
+	fig1.savefig('./out/Fig4/RSS.pdf', dpi=300)
+	fig2.savefig('./out/Fig4/AID.pdf', dpi=300)
+	figg.savefig('./out/Fig4/Iy1.pdf', dpi=300)
+	fig3.savefig('./out/Fig4/IgG1.pdf', dpi=300)
 
 	## Save results to excel
-	with pd.ExcelWriter("./out/Fig2-IgG1/repeat/Fig2_repeat_results.xlsx", engine='xlsxwriter', options=options, mode='w') as writer:
+	with pd.ExcelWriter("./out/Fig4/results.xlsx", engine='xlsxwriter', options=options, mode='w') as writer:
 		eff_xlsx = pd.DataFrame(data = {
 								'Efficiency (%)': pes*100,
 								'RSS': rss,
@@ -347,6 +349,7 @@ if __name__ == "__main__":
 					'Upper95%': igg1_upp95}
 		)
 		igg1_xlsx.to_excel(writer, sheet_name="IgG1", index=False)
-
-	plt.show()
 	
+	# plt.show()
+	
+

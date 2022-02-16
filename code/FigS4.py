@@ -20,8 +20,8 @@ rc = {
 sns.set(context='paper', style='white', rc=rc)
 
 ## Import data
-iy1_pre = pd.read_excel("./data/Fig2J/Fig2J_predivision_singlecellqPCR_Iy1.xlsx", usecols="A:C")
-iy1_pos = pd.read_excel("./data/Fig2J/Fig2J_POSTdivision_singlecellqPCR_Iy1.xlsx", usecols="A:C")
+iy1_pre = pd.read_excel("./data/FigS4/predivision_singlecellqPCR_Iy1.xlsx", usecols="A:C")
+iy1_pos = pd.read_excel("./data/FigS4/POSTdivision_singlecellqPCR_Iy1.xlsx", usecols="A:C")
 
 ## Organise into Pre- and Post-division
 iy1_pre['Sort'] = 'Pre-division'
@@ -38,29 +38,29 @@ df.replace(to_replace=dict(Lo='Low'), inplace=True)
 
 
 ## Original plot (recreated)
-fig1, ax1 = plt.subplots(figsize=(5,6), tight_layout=True)
-ax1.errorbar([0, 1], [np.mean(iy1_pre_hi['Iy1']), np.mean(iy1_pos_hi['Iy1'])], 
-			 yerr=sps.sem(iy1_pos_hi['Iy1']), color='r', fmt='o-', label='High')
-ax1.errorbar([0, 1], [np.mean(iy1_pre_lo['Iy1']), np.mean(iy1_pos_lo['Iy1'])], 
-			 yerr=sps.sem(iy1_pre_lo['Iy1']), color='b', fmt='o-', label='Low')
-ax1.set(xlabel="", xlim=(-0.5, 1.5), 
-		xticks=(0,1), xticklabels=("Pre-division", "Post-division"),
-		ylabel=r"Iy1 $\log_2$(RQ)", ylim=(0, 9))
-ax1.legend(fontsize=16)
+# fig1, ax1 = plt.subplots(figsize=(5,6), tight_layout=True)
+# ax1.errorbar([0, 1], [np.mean(iy1_pre_hi['Iy1']), np.mean(iy1_pos_hi['Iy1'])], 
+# 			 yerr=sps.sem(iy1_pos_hi['Iy1']), color='r', fmt='o-', label='High')
+# ax1.errorbar([0, 1], [np.mean(iy1_pre_lo['Iy1']), np.mean(iy1_pos_lo['Iy1'])], 
+# 			 yerr=sps.sem(iy1_pre_lo['Iy1']), color='b', fmt='o-', label='Low')
+# ax1.set(xlabel="", xlim=(-0.5, 1.5), 
+# 		xticks=(0,1), xticklabels=("Pre-division", "Post-division"),
+# 		ylabel=r"Iy1 $\log_2$(RQ)", ylim=(0, 9))
+# ax1.legend(fontsize=16)
 
 
 ## Violin plot
 fig2, ax2 = plt.subplots(figsize=(5,6), tight_layout=True)
 sns.violinplot(x='Sort', y='Iy1', hue='Sort enrichment', 
 			   data=df, split=True, inner=None, palette=['r', 'b'], ax=ax2)
-sns.swarmplot(x='Sort', y='Iy1', hue='Sort enrichment', dodge=True,
-			  data=df, palette=['r', 'b'], edgecolor='k', linewidth=1, ax=ax2, clip_on=False)
+# sns.swarmplot(x='Sort', y='Iy1', hue='Sort enrichment', dodge=True,
+# 			  data=df, palette=['r', 'b'], edgecolor='k', linewidth=1, ax=ax2, clip_on=False)
 ax2.set(xlabel="", ylabel=r"Iy1 $\log_2$(RQ)", ylim=(0,None))
 handles, labels = ax2.get_legend_handles_labels()
 ax2.legend(handles[:2], labels[:2], loc='upper right', fontsize=16)
 
 
-fig1.savefig("./out/Fig2J/original (recreated).pdf", dpi=300)
-fig2.savefig("./out/Fig2J/suggested.pdf", dpi=300)
+# fig1.savefig("./out/FigS4/original (recreated).pdf", dpi=300)
+fig2.savefig("./out/FigS4/suggested.pdf", dpi=300)
 
-plt.show()
+# plt.show()

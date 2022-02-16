@@ -23,11 +23,11 @@ rc = {
 }
 sns.set(context='paper', style='white', rc=rc)
 
-exp1_xlsx = './out/Fig2-IgG1/Fig2_results.xlsx'
+exp1_xlsx = './out/Fig4/results.xlsx'
 rss1 = pd.read_excel(exp1_xlsx, sheet_name='efficiency', index_col=0)
 par_fit1 = pd.read_excel(exp1_xlsx, sheet_name='pars_efficiency', index_col=0)
 
-exp2_xlsx = './out/Fig2-IgG1/repeat/Fig2_repeat_results.xlsx'
+exp2_xlsx = './out/Fig4/repeat/results.xlsx'
 rss2 = pd.read_excel(exp2_xlsx, sheet_name='efficiency', index_col=0)
 par_fit2 = pd.read_excel(exp2_xlsx, sheet_name='pars_efficiency', index_col=0)
 
@@ -60,13 +60,13 @@ ax1.set(xlabel="%Efficiency", xlim=(0,100),
 
 
 ## Import AID+ and IgG1+ measurements
-aid_xlsx1 = './data/Fig2-IgG1/Fig2E_AIDproportion_division.xlsx'
-aid_xlsx2 = './data/Fig2-IgG1/repeat/IgG_IgE_data.xlsx'
+aid_xlsx1 = './data/Fig4/Fig4I_AIDproportion_division.xlsx'
+aid_xlsx2 = './data/Fig4/repeat/IgG_IgE_data.xlsx'
 aid_df1 = pd.read_excel(aid_xlsx1, usecols="A:D", index_col=0)
 aid_df2 = pd.read_excel(aid_xlsx2, sheet_name='AID Div', index_col=0)
 
-igg1_xlsx1 = './data/Fig2-IgG1/Fig2M_IgG1switching_division.xlsx'
-igg1_xlsx2 = './data/Fig2-IgG1/repeat/IgG_IgE_data.xlsx'
+igg1_xlsx1 = './data/Fig4/Fig4J_IgG1switching_division.xlsx'
+igg1_xlsx2 = './data/Fig4/repeat/IgG_IgE_data.xlsx'
 igg1_df1 = pd.read_excel(igg1_xlsx1, usecols="A:D", index_col=0)
 igg1_df2 = pd.read_excel(igg1_xlsx2, sheet_name='IgG1 Div', index_col=0)
 
@@ -110,8 +110,8 @@ ax3.xaxis.set_major_locator(MaxNLocator(integer=True))
 
 
 ## Save plots
-fig1.savefig("./out/Fig2-IgG1/repeat/compare_rss.pdf", dpi=300)
-fig2.savefig("./out/Fig2-IgG1/repeat/compare_AID.pdf", dpi=300)
-fig3.savefig("./out/Fig2-IgG1/repeat/compare_IgG1.pdf", dpi=300)
+fig1.savefig("./out/Fig4/repeat/compare_rss.pdf", dpi=300)
+fig2.savefig("./out/Fig4/repeat/compare_AID.pdf", dpi=300)
+fig3.savefig("./out/Fig4/repeat/compare_IgG1.pdf", dpi=300)
 
-plt.show()
+# plt.show()
