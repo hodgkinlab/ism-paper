@@ -1,7 +1,7 @@
 # Isotype Switching Model
 
 This repository contains the data and codes used in the B cell isotype switching paper.
-- Python v3.8.6
+- Python v3.10.2
 - Run `pip install -r requirements.txt` to install the libraries necessary for the analysis. 'requirements.txt' file is located in "code" folder
 - All figures are pre-generated in respective output folders e.g. FigX where X is the figure number. By default, the plots are saved in "out" folder and replace any existing files.
 
