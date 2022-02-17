@@ -1,6 +1,6 @@
 # Isotype Switching Model
 
-This repository contains the data and codes used in the paper "A tunable, cell autonomous class switch mechanism complements heritable fate regulation to govern the emergence of isotype variegation within B cell clones".
+This repository contains the data and codes used in the B cell isotype switching paper.
 - Python v3.8.6
 - Run `pip install -r requirements.txt` to install the libraries necessary for the analysis. 'requirements.txt' file is located in "code" folder
 - All figures are pre-generated in respective output folders e.g. FigX where X is the figure number. By default, the plots are saved in "out" folder and replace any existing files.
