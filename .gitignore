@@ -15,8 +15,6 @@
 
 # Code output directories
 /code/out/**/*.R
-/code/out/**/*.pdf
-/code/out/**/*.xlsx
 /code/out/**/*.jpg
 /code/out/**/*.log
 /code/out/**/*.rtf
