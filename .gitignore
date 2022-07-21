@@ -13,6 +13,9 @@
 /docs/*.pptx
 /docs/*.docx
 
+# Data directories
+/code/data/archive
+
 # Code output directories
 /code/out/**/*.R
 /code/out/**/*.jpg
@@ -21,6 +24,7 @@
 /code/out/**/*.out
 /code/archive
 /code/out
+/code/out/archive
 !/code/out/
 !/code/out/**/.gitkeep
 

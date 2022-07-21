@@ -28,7 +28,7 @@ sns.set(context='paper', style='white', rc=rc)
 
 BRUTE_STEP = 0.001
 SITER = 100
-BITER = 100000
+BITER = 10000
 
 def aid_hazard(data):  # convert overall proportion to hazard probability
 	divs, nreps = data.shape
